@@ -1,0 +1,4 @@
+src/* linguist-vendored=false
+*.HAS linguist-language=Assembly
+*.MAC linguist-language=Assembly
+*.py linguist-language=Python

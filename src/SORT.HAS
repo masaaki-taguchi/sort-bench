@@ -1,0 +1,348 @@
+	.include	iocscall.mac
+	.include	doscall.mac
+	.include	fdef.h
+
+	.xdef	bubble_sort
+	.xdef	comb_sort
+	.xdef	quick_sort
+
+*-----------------------------------------------
+*
+*	外部関数ヘッダ定義
+*
+*-----------------------------------------------
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	return
+	dc.l	token_table
+	dc.l	param_table
+	dc.l	exec_table
+	dc.l	0,0,0,0,0
+token_table:
+	dc.b	'bubble_sort',0
+	dc.b	'comb_sort',0
+	dc.b	'quick_sort',0
+	dc.b	0
+.even
+param_table:
+	dc.l	p_bubble_sort
+	dc.l	p_comb_sort
+	dc.l	p_quick_sort
+p_bubble_sort:
+	dc.w	ary1_i, int_val, int_omt, void_ret
+p_comb_sort:
+	dc.w	ary1_i, int_val, int_omt, void_ret
+p_quick_sort:
+	dc.w	ary1_i, int_val, int_omt, void_ret
+exec_table:
+	dc.l	bubble_sort
+	dc.l	comb_sort
+	dc.l	quick_sort
+
+return:
+	rts
+
+*-----------------------------------------------
+*
+*	バブルソート
+*
+*	in : d0.l = ソート対象のデータのサイズ
+*	in : d1.w = 0:昇順 0以外:降順
+*	in : a0.l = ソート対象のアドレス
+*
+*-----------------------------------------------
+bubble_sort:
+	move.l	par1+6(sp),a0
+	lea.l	10(a0),a0
+	move.l	par2+6(sp),d0
+	cmpi.w	#$ffff,par3(sp)
+	bne	@f
+	moveq.l	#0,d1
+	bra	@@f
+@@:	move.l	par3+6(sp),d1
+@@:	bsr	_bubble_sort
+	moveq.l	#0,d0
+	rts
+
+_bubble_sort:
+	movem.l	d0-d7/a0-a6,-(sp)
+	cmp.l	#2,d0
+	bls	bubble_sort_exit
+	subq.l	#1,d0
+	move.w	d1,d2
+	move.l	d0,d1
+	tst.w	d2
+	bne	bubble_sort_desc_loop
+
+bubble_sort_asc_loop:
+	move.l	d0,d2
+	subq.l	#1,d2
+	movea.l	a0,a1
+	movea.l	a0,a2
+	addq.l	#4,a2
+@@:	cmp.l	(a1)+,(a2)+
+	bge	@f
+	move.l	-4(a1),d3
+	move.l	(a1),-4(a1)
+	move.l	d3,(a1)
+@@:	dbra	d2,@@b
+	clr.w	d2
+	subq.l	#1,d2
+	bcc	@@b
+@@:	dbra	d1,bubble_sort_asc_loop
+	clr.w	d1
+	subq.l	#1,d1
+	bcc	bubble_sort_asc_loop
+	bra	bubble_sort_exit
+
+bubble_sort_desc_loop:
+	move.l	d0,d2
+	subq.l	#1,d2
+	movea.l	a0,a1
+	movea.l	a0,a2
+	addq.l	#4,a2
+@@:	cmp.l	(a1)+,(a2)+
+	ble	@f
+	move.l	-4(a1),d3
+	move.l	(a1),-4(a1)
+	move.l	d3,(a1)
+@@:	dbra	d2,@@b
+	clr.w	d2
+	subq.l	#1,d2
+	bcc	@@b
+@@:	dbra	d1,bubble_sort_desc_loop
+	clr.w	d1
+	subq.l	#1,d1
+	bcc	bubble_sort_desc_loop
+
+bubble_sort_exit:
+	movem.l	(sp)+,d0-d7/a0-a6
+	rts
+
+*-----------------------------------------------
+*
+*	コムソート
+*
+*	in : d0.l = ソート対象のデータのサイズ
+*	in : d1.w = 0:昇順 0以外:降順
+*	in : a0.l = ソート対象のアドレス
+*
+*-----------------------------------------------
+comb_sort:
+	move.l	par1+6(sp),a0
+	lea.l	10(a0),a0
+	move.l	par2+6(sp),d0
+	cmpi.w	#$ffff,par3(sp)
+	bne	@f
+	moveq.l	#0,d1
+	bra	@@f
+@@:	move.l	par3+6(sp),d1
+@@:	bsr	_comb_sort
+	moveq.l	#0,d0
+	rts
+
+_comb_sort:
+	movem.l	d0-d7/a0-a6,-(sp)
+	cmp.l	#2,d0
+	bls	comb_sort_exit
+	move.w	d1,d6			*d6 = order
+	moveq.l	#0,d1
+	move.l	d0,d1			*d1 = gap
+comb_sort_loop:
+	move.l	d1,d2
+	lsl.l	#3,d2			*d2 = d1(gap) / 1.3
+	add.l	d1,d2
+	add.l	d1,d2
+
+	moveq.l	#13,d1
+	moveq.l	#0,d3
+	moveq.l	#32-1,d7
+comb_sort_divu32_loop:
+	addx.l	d2,d2
+	addx.l	d3,d3
+	bcs	@f
+	cmp.l	d1,d3
+	bcs	@@f
+@@:	sub.l	d1,d3
+	addq.l	#1,d2
+@@:	dbra	d7,comb_sort_divu32_loop
+
+	tst.l	d2
+	bne	@f
+	moveq.l	#1,d2
+@@:	move.l	d2,d1
+	moveq.l	#0,d5
+
+	move.l	d0,d2
+	sub.l	d1,d2
+	subq.l	#1,d2
+	movea.l	a0,a1
+	movea.l	a0,a2
+	adda.l	d1,a2
+	adda.l	d1,a2
+	adda.l	d1,a2
+	adda.l	d1,a2
+	tst.w	d6
+	bne	comb_sort_desc_loop
+
+comb_sort_asc_loop:
+	cmp.l	(a1)+,(a2)+
+	bge	@f
+	move.l	-4(a1),d4
+	move.l	-4(a2),-4(a1)
+	move.l	d4,-4(a2)
+	moveq.l	#1,d5
+@@:	dbra	d2,comb_sort_asc_loop
+	clr.w	d2
+	subq.l	#1,d2
+	bcc	comb_sort_asc_loop
+	bra	comb_sort_next_judge
+
+comb_sort_desc_loop:
+	cmp.l	(a1)+,(a2)+
+	ble	@f
+	move.l	-4(a1),d4
+	move.l	-4(a2),-4(a1)
+	move.l	d4,-4(a2)
+	moveq.l	#1,d5
+@@:	dbra	d2,comb_sort_desc_loop
+	clr.w	d2
+	subq.l	#1,d2
+	bcc	comb_sort_desc_loop
+
+comb_sort_next_judge:
+	tst.w	d5
+	bne	comb_sort_loop
+	cmp.l	#1,d1
+	bgt	comb_sort_loop
+
+comb_sort_exit:
+	movem.l	(sp)+,d0-d7/a0-a6
+	rts
+
+*-----------------------------------------------
+*
+*	クイックソート(再帰無し)
+*
+*	in : d0.l = ソート対象のデータのサイズ
+*	in : d1.w = 0:昇順 0以外:降順
+*	in : a0.l = ソート対象のアドレス
+*
+*-----------------------------------------------
+quick_sort:
+	move.l	par1+6(sp),a0
+	lea.l	10(a0),a0
+	move.l	par2+6(sp),d0
+	cmpi.w	#$ffff,par3(sp)
+	bne	@f
+	moveq.l	#0,d1
+	bra	@@f
+@@:	move.l	par3+6(sp),d1
+@@:	bsr	_quick_sort
+	moveq.l	#0,d0
+	rts
+
+_quick_sort:
+	movem.l	d0-d7/a0-a6,-(sp)
+	cmp.l	#2,d0
+	bls	quick_sort_exit
+	move.w	d1,d6			*d6 = order
+
+	lea.l	quick_sort_stack(pc),a1
+	move.l	#0,(a1)+
+	subq.l	#1,d0
+	move.l	d0,(a1)+
+	moveq.l	#1,d2			*d2 = stack position
+
+quick_sort_loop:
+	tst.l	d2
+	bmi	quick_sort_exit
+	move.l	-(a1),d0		*d0 = high position
+	move.l	-(a1),d1		*d1 = low position
+	subq.l	#2,d2
+
+	movea.l	a0,a2
+	move.l	d0,d7
+	add.l	d7,d7
+	add.l	d7,d7
+	adda.l	d7,a2
+	move.l	(a2),d3			*d3 = pivot
+
+	movea.l	a0,a2
+	move.l	d1,d7
+	add.l	d7,d7
+	add.l	d7,d7
+	adda.l	d7,a2
+	move.l	a2,a3
+	move.l	d1,d4
+
+	move.l	d0,d7
+	sub.l	d1,d7
+	subq.l	#1,d7
+	tst.w	d6
+	bne	quick_sort_desc_partition
+
+quick_sort_asc_partition:
+	cmp.l	(a2),d3
+	blt	@f
+	move.l	(a2),d5
+	move.l	(a3),(a2)+
+	move.l	d5,(a3)+
+	addq.l	#1,d4
+	bra	@@f
+@@:	addq.l	#4,a2
+@@:	dbra	d7,quick_sort_asc_partition
+	clr.w	d7
+	subq.l	#1,d7
+	bcc	quick_sort_asc_partition
+	bra	quick_sort_partition_finish
+
+quick_sort_desc_partition:
+	cmp.l	(a2),d3
+	bgt	@f
+	move.l	(a2),d5
+	move.l	(a3),(a2)+
+	move.l	d5,(a3)+
+	addq.l	#1,d4
+	bra	@@f
+@@:	addq.l	#4,a2
+@@:	dbra	d7,quick_sort_desc_partition
+	clr.w	d7
+	subq.l	#1,d7
+	bcc	quick_sort_desc_partition
+
+quick_sort_partition_finish:
+	move.l	(a2),d5
+	move.l	(a3),(a2)
+	move.l	d5,(a3)
+
+	move.l	d4,d7
+	subq.l	#1,d7
+	cmp.l	d7,d1
+	bge	@f
+	move.l	d1,(a1)+
+	move.l	d7,(a1)+
+	addq.l	#2,d2
+
+@@:	move.l	d4,d7
+	addq.l	#1,d7
+	cmp.l	d7,d0
+	ble	quick_sort_loop
+	move.l	d7,(a1)+
+	move.l	d0,(a1)+
+	addq.l	#2,d2
+	bra	quick_sort_loop
+quick_sort_exit:
+	movem.l	(sp)+,d0-d7/a0-a6
+	rts
+
+quick_sort_stack:
+	ds.l	128
+quick_sort_stack_end:
+	dc.l	0
+

@@ -1,0 +1,5 @@
+src/_build/
+src/*.o
+work/
+backup/
+
