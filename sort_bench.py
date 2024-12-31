@@ -3,7 +3,7 @@ import time
 import random
 x68k.loadfnc('SORT.FNC')
 
-MAX_DATA_NUM = 5000
+MAX_DATA_NUM = 10000
 BENCH_DATA_NUM = 5000
 
 def get_input(prompt, lower_limit, upper_limit, default_value=None):
